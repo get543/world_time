@@ -3,10 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:world_time/services/world_time.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'dart:convert';
-import 'package:world_time/pages/choose_location.dart';
 
 class Loading extends StatefulWidget {
   const Loading({super.key});
@@ -24,16 +21,20 @@ class _LoadingState extends State<Loading> {
   // !SETUP (IF YOU WANT TO LAUNCH SPECIFIC LOCATION ON APP START)
   void setupWorldTime() async {
     // Get the arguments passed from either home or choose_location
-    // The ?. is a null-aware operator, making it safe if no args are passed.
-    // dataFromLocation = ModalRoute.of(context)?.settings.arguments as Map;
-    parameters = ModalRoute.of(context)!.settings.arguments as Map; // getting the data
-    Map dataFromLocation = jsonDecode(jsonEncode(parameters));
+    parameters = ModalRoute.of(context)?.settings.arguments;
+    Map? dataFromLocation = {};
 
-    // url: 'America/Sao_Paulo', location: 'São Paulo', flag: 'brazil.png'
+    if (parameters != null && parameters is Map) {
+      dataFromLocation = parameters as Map<dynamic, dynamic>?;
+    } else {
+      // Default location on app start
+      dataFromLocation = {'url': 'Asia/Jakarta', 'location': 'Jakarta', 'flag': 'indonesia.png'};
+    }
+
     WorldTime instance = WorldTime(
-      url: dataFromLocation["url"],
-      location: dataFromLocation["location"],
-      flag: dataFromLocation["flag"],
+      url: dataFromLocation?['url'],
+      location: dataFromLocation?['location'],
+      flag: dataFromLocation?['flag'],
     );
 
     if (kDebugMode) {
@@ -55,9 +56,11 @@ class _LoadingState extends State<Loading> {
 
   @override
   void initState() { // Function that runs first when creating state object
-    // TODO: implement initState
     super.initState();
-    // setupWorldTime();
+    // Use addPostFrameCallback to ensure context is available for ModalRoute
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      setupWorldTime();
+    });
   }
 
   @override

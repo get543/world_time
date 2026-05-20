@@ -8,8 +8,14 @@ class WorldTime {
   late String flag; // url to an asset flag icon
   late String url; // location url for api endpoint
   late bool isDaytime; // true or false if daytime or not
+  String? countryCode;
 
-  WorldTime({ required this.location, required this.flag, required this.url });
+  WorldTime({
+    required this.location,
+    required this.flag,
+    required this.url,
+    this.countryCode,
+  });
 
   // like a promise in JS (placeholder value until async function is complete
   Future<void> getTime() async {
@@ -43,31 +49,16 @@ class WorldTime {
         print("Found code: $countryCode"); // Will print "Found code: ch"
       }
 
-      flag = countryCode!;
-
-
-      // *get properties from data
-      // String datetime = data["datetime"];
-      // String offset = data["utc_offset"].substring(1, 3);
-
-      // *create datetime oject
-      // DateTime now  = DateTime.parse(datetime);
-      // now = now.add(Duration(hours: int.parse(offset)));
-
-      // *set time property
-      // time = now.toString();
-      // time = DateFormat.jm().format(now);
-
       // *only use this with timeapi.io api
-      isDaytime = data["hour"] > 6 && data["hour"] < 20 ? true : false; // 6:00 - 19:59
+      isDaytime = data["hour"] > 6 && data["hour"] < 18 ? true : false; // 6:00 - 17:59
       time = data["time"];
-
 
     } catch (e) {
       if (kDebugMode) {
-        print("caught error: $e");
+        print("Caught an error: $e");
       }
       time = "could not get time data";
+      isDaytime = false;
     }
   }
 
@@ -78,7 +69,7 @@ class WorldTime {
     /* !The data response is represented in strings (JSON represented as strings) */
     Response response = await get(Uri.parse("https://jsonplaceholder.typicode.com/posts/1")); // store response in an object
     Map data = jsonDecode(response.body); // decode response into a json then we can use map to get the property
-    // List< dynamic> data = jsonDecode(response.body); // samething but using dynamic and define the string data type
+    // List< dynamic> data = jsonDecode(response.body); // same thing but using dynamic and define the string data type
     if (kDebugMode) {
       print(data);
     }
