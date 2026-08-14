@@ -1,6 +1,8 @@
+import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:world_time/services/world_time.dart';
 
 class Home extends StatefulWidget {
   const Home({super.key});
@@ -10,50 +12,81 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  Map data = {};
+  final Map<String, dynamic> _data = <String, dynamic>{};
+  Timer? _refreshTimer;
+
+  void _refreshTime() async {
+    final String url = (_data['url'] as String?) ?? 'Asia/Jakarta';
+    final String location = (_data['location'] as String?) ?? 'Jakarta';
+    final String flag = (_data['flag'] as String?) ?? 'indonesia.png';
+
+    final WorldTime instance = WorldTime(
+      url: url,
+      location: location,
+      flag: flag,
+    );
+
+    await instance.getTime();
+
+    if (!mounted) return;
+
+    setState(() {
+      _data['time'] = instance.time;
+      _data['isDayTime'] = instance.isDaytime;
+    });
+  }
+
+  void _startAutoRefresh() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _refreshTime();
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    // This code runs only ONCE when the widget is first built.
-    // We use a post-frame callback to ensure the context is fully available.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Safely get the arguments passed from the previous screen.
-      final arguments = ModalRoute.of(context)?.settings.arguments;
+      final Object? arguments = ModalRoute.of(context)?.settings.arguments;
 
-      // IMPORTANT: Check if arguments are not null and are of the correct type.
-      if (arguments != null && arguments is Map) {
+      if (arguments is Map<String, dynamic>) {
         setState(() {
-          // If they are valid, update our state variable.
-          data = arguments;
+          _data.addAll(arguments);
         });
+        _startAutoRefresh();
       } else {
-        // Optional: Handle the case where no arguments were passed.
-        // You could set default data or show an error.
         if (kDebugMode) {
-          print("No arguments received or arguments are not a Map.");
+          print('No arguments received or arguments are not a Map.');
         }
         setState(() {
-          data = {'error': 'No data found'};
+          _data['error'] = 'No data found';
         });
       }
     });
   }
 
   @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Check if data is empty. If it is, get arguments.
-    // This prevents overwriting your data on rebuilds.
-    if (data.isEmpty) {
-      data = ModalRoute.of(context)?.settings.arguments as Map? ?? {};
+    if (_data.isEmpty) {
+      final Object? args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map<String, dynamic>) {
+        _data.addAll(args);
+        _startAutoRefresh();
+      }
     }
 
-    // set background
-    String bgImage = data["isDayTime"] ? "day.png" : "night.png";
-    Color? bgColor = data["isDayTime"] ? Colors.blue[100] : Colors.indigo[700];
-    Color? frColor = data["isDayTime"] ? Colors.grey[900] : Colors.white;
+    final bool isDayTime = _data['isDayTime'] == true;
+    final String bgImage = isDayTime ? 'day.png' : 'night.png';
+    final Color? bgColor = isDayTime ? Colors.blue[100] : Colors.indigo[700];
+    final Color? frColor = isDayTime ? Colors.grey[900] : Colors.white;
 
-    var orientation = MediaQuery.of(context).orientation;
+    final Orientation orientation = MediaQuery.of(context).orientation;
 
     if (orientation == Orientation.landscape) {
       return Scaffold(
@@ -61,15 +94,10 @@ class _HomeState extends State<Home> {
         body: SafeArea(
           child: Row(
             children: <Widget>[
-              // Left side: Background Image
               Expanded(
                 flex: 1,
-                child: Image.asset(
-                  "assets/bg/$bgImage",
-                  fit: BoxFit.cover,
-                ),
+                child: Image.asset("assets/bg/$bgImage", fit: BoxFit.cover),
               ),
-              // Right side: Content
               Expanded(
                 flex: 1,
                 child: Center(
@@ -80,22 +108,22 @@ class _HomeState extends State<Home> {
                       children: <Widget>[
                         TextButton.icon(
                           onPressed: () async {
-                            dynamic result = await Navigator.pushNamed(context, "/location");
-                            if (result != null) {
+                            final dynamic result = await Navigator.pushNamed(
+                              context,
+                              "/location",
+                            );
+                            if (result is Map<String, dynamic>) {
                               setState(() {
-                                data = {
-                                  "time": result["time"],
-                                  "location": result["location"],
-                                  "isDayTime": result["isDayTime"],
-                                  "flag": result["flag"],
-                                };
+                                _data["time"] = result["time"];
+                                _data["location"] = result["location"];
+                                _data["isDayTime"] = result["isDayTime"];
+                                _data["flag"] = result["flag"];
+                                _data["url"] = result["url"] ?? _data["url"];
                               });
+                              _startAutoRefresh();
                             }
                           },
-                          icon: Icon(
-                            Icons.edit_location,
-                            color: frColor,
-                          ),
+                          icon: Icon(Icons.edit_location, color: frColor),
                           label: Text(
                             "Edit Location",
                             style: TextStyle(
@@ -107,7 +135,7 @@ class _HomeState extends State<Home> {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          data["location"] ?? "Unknown Location",
+                          (_data["location"] as String?) ?? "Unknown Location",
                           style: TextStyle(
                             fontSize: 28,
                             letterSpacing: 2,
@@ -117,7 +145,7 @@ class _HomeState extends State<Home> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          data["time"] ?? "...",
+                          (_data["time"] as String?) ?? "...",
                           style: TextStyle(
                             fontSize: 48,
                             color: frColor,
@@ -125,7 +153,7 @@ class _HomeState extends State<Home> {
                             fontWeight: FontWeight.w800,
                           ),
                           textAlign: TextAlign.center,
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -135,83 +163,82 @@ class _HomeState extends State<Home> {
           ),
         ),
       );
-
-    } else { // portrait
+    } else {
       return Scaffold(
         backgroundColor: bgColor,
-        body: SafeArea(child: Container(
-          decoration: BoxDecoration(
+        body: SafeArea(
+          child: Container(
+            decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage("assets/bg/$bgImage"),
                 fit: BoxFit.contain,
-              )
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(0, 450, 0, 0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center, // This centers the children vertically
-              crossAxisAlignment: CrossAxisAlignment.center, // This centers the children horizontally
-              children: <Widget>[
-                TextButton.icon(
-                  onPressed: () async {
-                    // Wait for the user to pick a location and return data
-                    dynamic result = await Navigator.pushNamed(context, "/location");
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(0, 450, 0, 0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  TextButton.icon(
+                    onPressed: () async {
+                      final dynamic result = await Navigator.pushNamed(
+                        context,
+                        "/location",
+                      );
 
-                    if (result != null) {
-                      setState(() {
-                        data = {
-                          "time": result["time"],
-                          "location": result["location"],
-                          "isDayTime": result["isDayTime"],
-                          "flag": result["flag"],
-                        };
-                      });
-                    }
-                    // Navigator.pushNamed(context, "/location");
-                  },
-                  icon: Icon(
-                    Icons.edit_location,
-                    color: frColor,
-                  ),
-                  label: Text(
-                    "Edit Location",
-                    style: TextStyle(
-                      color: frColor,
-                      fontFamily: "Roboto",
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Text(
-                      data["location"] ?? "Unknown Location",
+                      if (result is Map<String, dynamic>) {
+                        setState(() {
+                          _data["time"] = result["time"];
+                          _data["location"] = result["location"];
+                          _data["isDayTime"] = result["isDayTime"];
+                          _data["flag"] = result["flag"];
+                          _data["url"] = result["url"] ?? _data["url"];
+                        });
+                        _startAutoRefresh();
+                      }
+                    },
+                    icon: Icon(Icons.edit_location, color: frColor),
+                    label: Text(
+                      "Edit Location",
                       style: TextStyle(
-                        fontSize: 28,
-                        letterSpacing: 2,
                         color: frColor,
                         fontFamily: "Roboto",
+                        fontSize: 14,
                       ),
-                    )
-                  ],
-                ),
-                SizedBox(height: 10),
-                Text(
-                  data["time"] ?? "...",
-                  style: TextStyle(
-                    fontSize: 66,
-                    color: frColor,
-                    fontFamily: "Roboto",
-                    fontWeight: FontWeight.w800,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                )
-              ],
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Text(
+                        (_data["location"] as String?) ?? "Unknown Location",
+                        style: TextStyle(
+                          fontSize: 28,
+                          letterSpacing: 2,
+                          color: frColor,
+                          fontFamily: "Roboto",
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    (_data["time"] as String?) ?? "...",
+                    style: TextStyle(
+                      fontSize: 66,
+                      color: frColor,
+                      fontFamily: "Roboto",
+                      fontWeight: FontWeight.w800,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
-        ),), // Moves widgets into safe area
+        ),
       );
     }
   }

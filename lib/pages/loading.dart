@@ -1,6 +1,5 @@
 // Initial loading screen
 // When it loads it redirect to home screen
-import 'package:flutter/foundation.dart';
 import 'package:world_time/services/world_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -13,51 +12,49 @@ class Loading extends StatefulWidget {
 }
 
 class _LoadingState extends State<Loading> {
-
-    Map dataFromLocation = {};
-    Object? parameters;
-
-  // !DONT NEED THIS, TOO COMPLEX
-  // !SETUP (IF YOU WANT TO LAUNCH SPECIFIC LOCATION ON APP START)
   void setupWorldTime() async {
-    // Get the arguments passed from either home or choose_location
-    parameters = ModalRoute.of(context)?.settings.arguments;
-    Map? dataFromLocation = {};
+    final Object? params = ModalRoute.of(context)?.settings.arguments;
+    final Map<String, dynamic> locationData;
 
-    if (parameters != null && parameters is Map) {
-      dataFromLocation = parameters as Map<dynamic, dynamic>?;
+    if (params is Map<String, dynamic>) {
+      locationData = params;
     } else {
-      // Default location on app start
-      dataFromLocation = {'url': 'Asia/Jakarta', 'location': 'Jakarta', 'flag': 'indonesia.png'};
+      locationData = <String, dynamic>{
+        'url': 'Asia/Jakarta',
+        'location': 'Jakarta',
+        'flag': 'indonesia.png',
+      };
     }
 
-    WorldTime instance = WorldTime(
-      url: dataFromLocation?['url'],
-      location: dataFromLocation?['location'],
-      flag: dataFromLocation?['flag'],
+    final String wtUrl = locationData['url'] as String;
+    final String wtLocation = locationData['location'] as String;
+    final String wtFlag = locationData['flag'] as String;
+
+    final WorldTime instance = WorldTime(
+      url: wtUrl,
+      location: wtLocation,
+      flag: wtFlag,
     );
-
-    if (kDebugMode) {
-      print(dataFromLocation);
-    }
 
     await instance.getTime();
 
-    // same with pushNamed, but instead it replaces it instead of adding it to the stack
-    // redirects to home screen (home.dart)
-    Navigator.pushReplacementNamed(context, "/home", arguments: {
-      "location": instance.location, // passing data in world_time.dart or in this file
-      "flag": instance.flag,
-      "time": instance.time,
-      "isDayTime": instance.isDaytime,
-    });
+    if (!mounted) return;
+
+    Navigator.pushReplacementNamed(
+      context,
+      "/home",
+      arguments: <String, dynamic>{
+        "location": instance.location,
+        "flag": instance.flag,
+        "time": instance.time,
+        "isDayTime": instance.isDaytime,
+      },
+    );
   }
 
-
   @override
-  void initState() { // Function that runs first when creating state object
+  void initState() {
     super.initState();
-    // Use addPostFrameCallback to ensure context is available for ModalRoute
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setupWorldTime();
     });
@@ -65,14 +62,9 @@ class _LoadingState extends State<Loading> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.blue[900],
-      body: Center(
-        child: SpinKitChasingDots(
-          color: Colors.white,
-          size: 80,
-        ),
-      )
+    return const Scaffold(
+      backgroundColor: Color(0xFF0D47A1), // Colors.blue[900]
+      body: Center(child: SpinKitChasingDots(color: Colors.white, size: 80)),
     );
   }
 }

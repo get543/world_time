@@ -1,16 +1,17 @@
-# world_time
+# World Time
 
 An app to see time in the world.
 
-## Getting Started
+> [!INFO]
+> for some reason, https://timeapi.io does not give accurate result
+>
+> you can check through this [URL](https://timeapi.io/api/Time/current/zone?timeZone=$url) and just change `$url` to [supported IANA timezones](https://timeapi.io/documentation/iana-timezones)
 
-This project is a starting point for a Flutter application.
 
-A few resources to get you started if this is your first Flutter project:
+## [⬇️ Click Here to Download ⬇️](https://github.com/YOUR\_USERNAME/YOUR\_REPO/releases/latest/download/Better\_PWA.apk)
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Credit
+
+<a href="https://www.flaticon.com/free-icons/earth-hour" title="earth-hour icons">Earth-hour icons created by bukeicon - Flaticon</a>
+
