@@ -2,7 +2,7 @@
 
 An app to see time in the world.
 
-> [!INFO]
+> [!NOTE]
 > for some reason, https://timeapi.io does not give accurate result
 >
 > you can check through this [URL](https://timeapi.io/api/Time/current/zone?timeZone=$url) and just change `$url` to [supported IANA timezones](https://timeapi.io/documentation/iana-timezones)
