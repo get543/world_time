@@ -1,4 +1,4 @@
-package com.worldtime.world_time
+package time.world
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -9,7 +9,7 @@ class WorldTime {
   late String flag; // url to an asset flag icon
   late String url; // location url for api endpoint
   late bool isDaytime; // true or false if daytime or not
-  String? countryCode;
+  String? countryCode; // country code for flag (US, UK)
 
   WorldTime({
     required this.location,
@@ -18,64 +18,75 @@ class WorldTime {
     this.countryCode,
   });
 
+  /// Main entry point to fetch data for the location.
   Future<void> getTime() async {
+    // We run these sequentially to ensure basic time data is loaded first,
+    // though they could technically be parallelized if needed.
+    await _fetchTimeData();
+    await _fetchCountryCode();
+  }
+
+  /// Fetches the current time for the specified [url] timezone.
+  Future<void> _fetchTimeData() async {
     try {
       final Response response = await get(
         Uri.parse('https://timeapi.io/api/Time/current/zone?timeZone=$url'),
       );
 
       if (response.statusCode != 200) {
-        throw Exception('Failed to load time for $url: ${response.statusCode}');
+        throw Exception('HTTP ${response.statusCode}');
       }
 
       final Map<String, dynamic> data = jsonDecode(response.body) as Map<String, dynamic>;
-      final String rawTime = (data['time'] as String?) ?? '00:00';
-      final int hour = (data['hour'] as int?) ?? 0;
+      time = (data['time'] as String?) ?? '00:00';
 
-      time = rawTime;
+      final int hour = (data['hour'] as int?) ?? 0;
       isDaytime = hour >= 6 && hour < 18;
 
       if (kDebugMode) {
-        print('Fetched time for $location: $time (${data['timeZone'] ?? url})');
-      }
-
-      // Keep the country lookup logic for flag metadata, but do not block the time fetch.
-      try {
-        final Response flagResponse = await get(
-          Uri.parse('https://flagcdn.com/en/codes.json'),
-        );
-
-        if (flagResponse.statusCode == 200) {
-          final Map<String, dynamic> flagData = jsonDecode(flagResponse.body) as Map<String, dynamic>;
-
-          String countryName = flag.split('.').first;
-          countryName = countryName[0].toUpperCase() + countryName.substring(1);
-          String? foundCountryCode;
-
-          for (String key in flagData.keys) {
-            if (flagData[key] == countryName) {
-              foundCountryCode = key;
-              break;
-            }
-          }
-
-          if (kDebugMode) {
-            print('Found code: $foundCountryCode');
-          }
-
-          countryCode = foundCountryCode;
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Skipped flag lookup: $e');
-        }
+        print('Time data fetched for $location: $time');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Caught an error: $e');
+        print('Error fetching time data: $e');
       }
-      time = 'could not get time data';
+      time = 'Error 😔';
       isDaytime = false;
+    }
+  }
+
+  /// Attempts to find a matching country code for the flag asset.
+  Future<void> _fetchCountryCode() async {
+    try {
+      final Response response = await get(
+        Uri.parse('https://flagcdn.com/en/codes.json'),
+      );
+
+      if (response.statusCode != 200) return;
+
+      final Map<String, dynamic> flagData = jsonDecode(response.body) as Map<String, dynamic>;
+
+      // Basic normalization: 'uk.png' -> 'Uk'
+      String countryName = flag.split('.').first;
+      countryName = countryName[0].toUpperCase() + countryName.substring(1);
+
+      for (final String key in flagData.keys) {
+        if (flagData[key] == countryName) {
+          countryCode = key;
+          break;
+        }
+      }
+
+      if (countryCode != null) {
+        if (kDebugMode) {
+          print('Found country code for $location: $countryCode');
+        }
+      }
+    } catch (e) {
+      // Flag lookup is non-critical, so we just log the failure.
+      if (kDebugMode) {
+        print('Flag lookup failed: $e');
+      }
     }
   }
 }
