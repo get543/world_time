@@ -18,6 +18,20 @@ class WorldTime {
     this.countryCode,
   });
 
+  /// Derives a readable country name from the flag filename.
+  String get countryName {
+    // Basic normalization: 'democratic_republic_of_congo.png' -> 'Democratic Republic Of Congo'
+    String name = flag.split('.').first;
+    return name.split('_').map((word) {
+      if (word.isEmpty) return '';
+      // Special cases for acronyms
+      if (word.toLowerCase() == 'usa') return 'USA';
+      if (word.toLowerCase() == 'uk') return 'UK';
+      if (word.toLowerCase() == 'uae') return 'UAE';
+      return word[0].toUpperCase() + word.substring(1);
+    }).join(' ');
+  }
+
   /// Main entry point to fetch data for the location.
   Future<void> getTime() async {
     // We run these sequentially to ensure basic time data is loaded first,

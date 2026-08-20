@@ -1,5 +1,6 @@
 import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:world_time/services/locations_data.dart'; // original list
 import 'package:world_time/services/world_time.dart';
 
@@ -12,6 +13,25 @@ class ChooseLocation extends StatefulWidget {
 
 class _ChooseLocationState extends State<ChooseLocation> {
   bool isLoading = false;
+  bool _isAscending = true;
+  List<WorldTime> _foundLocations = [];
+
+  @override
+  void initState() {
+    _foundLocations = List.from(locations);
+    _sortLocations();
+    super.initState();
+  }
+
+  void _sortLocations() {
+    setState(() {
+      if (_isAscending) {
+        _foundLocations.sort((a, b) => a.location.compareTo(b.location));
+      } else {
+        _foundLocations.sort((a, b) => b.location.compareTo(a.location));
+      }
+    });
+  }
 
   Future<void> updateTime(int index) async {
     final WorldTime instance = _foundLocations[index];
@@ -31,31 +51,29 @@ class _ChooseLocationState extends State<ChooseLocation> {
     });
   }
 
-  List<WorldTime> _foundLocations = []; // found value
-
-  @override
-  void initState() {
-    _foundLocations = locations; // set the state
-    super.initState();
-  }
-
   void _runFilter(String enteredKeyword) {
     List<WorldTime> results = [];
 
     // if the search field is empty or
     // only contains white-space, we'll display all locations (og list)
     if (enteredKeyword.isEmpty) {
-      results = locations;
+      results = List.from(locations);
     } else {
       // use toLowerCase() to make it case-insensitive
-      results = locations
-          .where(
-            (country) => country.location.toLowerCase().contains(
-              enteredKeyword.toLowerCase(),
-            ),
-          )
-          .toList();
+      final String searchLower = enteredKeyword.toLowerCase();
+      results = locations.where((item) {
+        return item.location.toLowerCase().contains(searchLower) ||
+            item.countryName.toLowerCase().contains(searchLower);
+      }).toList();
     }
+
+    // Maintain current sort order
+    if (_isAscending) {
+      results.sort((a, b) => a.location.compareTo(b.location));
+    } else {
+      results.sort((a, b) => b.location.compareTo(a.location));
+    }
+
     setState(() {
       _foundLocations = results;
     });
@@ -65,10 +83,8 @@ class _ChooseLocationState extends State<ChooseLocation> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return const Scaffold(
-        backgroundColor: Colors.grey,
-        body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
-        ),
+        backgroundColor: Color(0xFF0D47A1), // Colors.blue[900]
+        body: Center(child: SpinKitChasingDots(color: Colors.white, size: 80)),
       );
     }
 
@@ -87,6 +103,19 @@ class _ChooseLocationState extends State<ChooseLocation> {
         ),
         centerTitle: true,
         elevation: 0,
+        actions: [
+          IconButton(
+            onPressed: () {
+              _isAscending = !_isAscending;
+              _sortLocations();
+            },
+            icon: Icon(
+              _isAscending ? Icons.sort_by_alpha : Icons.sort_by_alpha_outlined,
+              color: Colors.grey[200],
+            ),
+            tooltip: _isAscending ? "Sort Z-A" : "Sort A-Z",
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(10),
@@ -116,6 +145,13 @@ class _ChooseLocationState extends State<ChooseLocation> {
                         style: const TextStyle(
                           fontFamily: "Roboto",
                           fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                      subtitle: Text(
+                        _foundLocations[index].countryName,
+                        style: const TextStyle(
+                          fontFamily: "Roboto",
+                          fontSize: 12,
                         ),
                       ),
                       leading: CircleAvatar(
